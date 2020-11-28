@@ -21,7 +21,7 @@ namespace ES
         {
             this.list = list;
             columns = multiColumnHeader.state.columns.Cast<Table<T>.Column>().ToArray();
-            //multiColumnHeader.sortingChanged += this.sort
+            multiColumnHeader.sortingChanged += () => SortIfNeeded();
             Reload();
         }
 
@@ -52,6 +52,40 @@ namespace ES
                 columns[args.GetColumn(i)].drawCell(drawCellArgs);
             }
         }
+
+        void SortIfNeeded()
+        {
+            var rows = GetRows();
+            if (rows.Count <= 1 || multiColumnHeader.sortedColumnIndex == -1)
+                return;
+
+            // Sort the roots of the existing tree items
+            SortByMultipleColumns();
+            Repaint();
+        }
+
+        void SortByMultipleColumns()
+        {
+            var sortedColumns = multiColumnHeader.state.sortedColumns;
+
+            if (sortedColumns.Length == 0)
+                return;
+
+            var items = rootItem.children.Cast<TableViewItem<T>>().Select(t=>t.data);
+            bool ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
+            var orderedQuery = items.Order(columns[sortedColumns[0]].selector, ascending);
+            for (int i = 1; i < sortedColumns.Length; i++)
+            {
+                if (columns[sortedColumns[i]]?.selector == null)
+                    continue;
+                ascending = multiColumnHeader.IsSortedAscending(sortedColumns[i]);
+                orderedQuery = orderedQuery.ThenBy(columns[sortedColumns[i]].selector, ascending);
+            }
+
+            rootItem.children = orderedQuery.Cast<TreeViewItem>().ToList();
+        }
+
+       
 
         private IEnumerable<T> GetSelectedItems() => GetSelection().Cast<TableViewItem<T>>().Select(i => i.data);
 
@@ -130,5 +164,32 @@ namespace ES
 
         // TODO: Add Later
         //protected override void SearchChanged(string newSearch) 
+    }
+
+    static class MyExtensionMethods
+    {
+        public static IOrderedEnumerable<T> Order<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector, bool ascending)
+        {
+            if (ascending)
+            {
+                return source.OrderBy(selector);
+            }
+            else
+            {
+                return source.OrderByDescending(selector);
+            }
+        }
+
+        public static IOrderedEnumerable<T> ThenBy<T, TKey>(this IOrderedEnumerable<T> source, Func<T, TKey> selector, bool ascending)
+        {
+            if (ascending)
+            {
+                return source.ThenBy(selector);
+            }
+            else
+            {
+                return source.ThenByDescending(selector);
+            }
+        }
     }
 }

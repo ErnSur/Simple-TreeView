@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -52,6 +53,7 @@ namespace ES
         public class Column : MultiColumnHeaderState.Column
         {
             public DrawCell<T> drawCell;
+            public Func<T, object> selector;
         }
     }
 
