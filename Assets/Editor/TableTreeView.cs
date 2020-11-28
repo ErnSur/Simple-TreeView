@@ -1,18 +1,21 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
+using UnityEngine;
 
 namespace ES
 {
     public delegate bool ShouldDrawRow<T>(T item, string searchString);
     public delegate void DrawCell<T>(DrawCellArgs<T> args);
+
     public class TableTreeView<T> : TreeView
     {
+        private static readonly string[] DeleteCommands = new[] { "Delete", "SoftDelete" };
+
         public IList<T> list;
-        public ShouldDrawRow<T> shouldDrawRow = (_, __) => true;
+        public TreeViewEvents<T> events = new TreeViewEvents<T>();
         public Table<T>.Column[] columns;
         public TableTreeView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state, multiColumnHeader)
         {
@@ -27,12 +30,13 @@ namespace ES
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
             var rows = list
-                .Where(i => shouldDrawRow(i, searchString))
+                .Where(i => events.ShouldDrawRow(i, searchString))
                 .Select((i, index) => new TableViewItem<T>(i, index) as TreeViewItem)
                 .ToList();
             SetupParentsAndChildrenFromDepths(root, rows);
             return rows;
         }
+
         protected override void RowGUI(RowGUIArgs args)
         {
             var item = args.item as TableViewItem<T>;
@@ -49,80 +53,82 @@ namespace ES
             }
         }
 
-        protected override bool CanMultiSelect(TreeViewItem item)
-        {
-            return base.CanMultiSelect(item);
-        }
+        private IEnumerable<T> GetSelectedItems() => GetSelection().Cast<TableViewItem<T>>().Select(i => i.data);
 
-        protected override bool CanStartDrag(CanStartDragArgs args)
-        {
-            return base.CanStartDrag(args);
-        }
+        private T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
+
+        protected override bool CanMultiSelect(TreeViewItem item) => events.CanMultiSelect?.Invoke((item as TableViewItem<T>).data) ?? false;
 
         protected override void CommandEventHandling()
         {
+            Event current = Event.current;
+            if (current.type != EventType.ExecuteCommand && current.type != EventType.ValidateCommand)
+            {
+                return;
+            }
+
+            Debug.Log($"Command: {current.commandName}");
+            TryExecuteCommand(current, () => events.OnDelete?.Invoke(GetSelectedItems()), DeleteCommands);
+            TryExecuteCommand(current, () => events.OnDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
+            TryExecuteCommand(current, () => events.OnCopy?.Invoke(GetSelectedItems()), "Copy");
+            TryExecuteCommand(current, () => events.OnCut?.Invoke(GetSelectedItems()), "Cut");
+            TryExecuteCommand(current, () => events.OnPaste?.Invoke(GetSelectedItems()), "Pase");
             base.CommandEventHandling();
         }
 
-        protected override void ContextClicked()
+        private void TryExecuteCommand(Event current, Action action, params string[] commandNames)
         {
-            base.ContextClicked();
+            if (HasFocus() && commandNames.Contains(current.commandName))
+            {
+                if (current.type == EventType.ExecuteCommand)
+                {
+                    action?.Invoke();
+                }
+
+                current.Use();
+                GUIUtility.ExitGUI();
+            }
         }
 
-        protected override void ContextClickedItem(int id)
-        {
-            base.ContextClickedItem(id);
-        }
+        protected override void ContextClicked() => events.ContextClicked?.Invoke();
 
-        protected override bool DoesItemMatchSearch(TreeViewItem item, string search)
-        {
-            return base.DoesItemMatchSearch(item, search);
-        }
-
-        protected override void DoubleClickedItem(int id)
-        {
-            base.DoubleClickedItem(id);
-        }
-
-        protected override float GetCustomRowHeight(int row, TreeViewItem item)
-        {
-            return base.GetCustomRowHeight(row, item);
-        }
-
-        protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
-        {
-            return base.HandleDragAndDrop(args);
-        }
-
-        protected override void KeyEvent()
-        {
-            base.KeyEvent();
-        }
-
-        protected override void RefreshCustomRowHeights()
-        {
-            base.RefreshCustomRowHeights();
-        }
-
-
-        protected override void SearchChanged(string newSearch)
-        {
-            base.SearchChanged(newSearch);
-        }
+        protected override void ContextClickedItem(int id) => events.ContextClickedItem?.Invoke(GetSelectedItem());
 
         protected override void SelectionChanged(IList<int> selectedIds)
         {
-            base.SelectionChanged(selectedIds);
+            events.SelectionChanged?.Invoke(selectedIds.Cast<TableViewItem<T>>().Select(i => i.data).ToList());
         }
 
-        protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
+        protected override void SingleClickedItem(int id) => 
+            events.SingleClickedItem?.Invoke(GetSelectedItem());
+
+        protected override void DoubleClickedItem(int id) =>
+            events.DoubleClickedItem?.Invoke(GetSelectedItem());
+
+        protected override bool CanStartDrag(CanStartDragArgs args) => 
+            events.SetupDragAndDrop != null;
+
+        protected override void SetupDragAndDrop(SetupDragAndDropArgs args) =>
+            events.SetupDragAndDrop(GetSelectedItems());
+
+        protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
         {
-            base.SetupDragAndDrop(args);
+            return events.HandleDragAndDrop?.Invoke(args.performDrop, args.insertAtIndex) ?? DragAndDropVisualMode.None;
         }
 
-        protected override void SingleClickedItem(int id)
-        {
-            base.SingleClickedItem(id);
-        }
+        // TODO: Check in cs source if this is used somewhere
+        //protected override bool DoesItemMatchSearch(TreeViewItem item, string search)
+
+        // TODO: Add Later
+        //protected override float GetCustomRowHeight(int row, TreeViewItem item)
+
+        // TODO: Add Later
+        //protected override void KeyEvent() 
+
+        // TODO: Add Later
+        //protected override void RefreshCustomRowHeights() 
+
+        // TODO: Add Later
+        //protected override void SearchChanged(string newSearch) 
     }
 }

@@ -18,11 +18,7 @@ namespace ES
             get => view.searchString;
             set => view.searchString = value;
         }
-        public ShouldDrawRow<T> ShouldDrawRow
-        {
-            get => view.shouldDrawRow;
-            set => view.shouldDrawRow = value;
-        }
+        public TreeViewEvents<T> Events => view.events;
 
         #endregion
         private TableTreeView<T> view;

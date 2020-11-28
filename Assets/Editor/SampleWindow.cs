@@ -23,10 +23,11 @@ namespace ES
         {
             searchField = new SearchField();
             table = new FooTable(CreateTableColumns(), state, list);
-            table.ShouldDrawRow = (i,search) =>
+            table.Events.ShouldDrawRow = (i,search) =>
             {
                 return i.name.Contains(search) || i.id.ToString().Contains(search);
             };
+
         }
 
         private void OnGUI()
