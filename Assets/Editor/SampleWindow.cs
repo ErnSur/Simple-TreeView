@@ -46,6 +46,10 @@ namespace ES
                     drawCell = args =>
                     {
                         GUI.Label(args.rect,args.item.name.ToString());
+                    },
+                    selector = i =>
+                    {
+                        return i.name;
                     }
                 },
                 new FooTable.Column
@@ -54,6 +58,10 @@ namespace ES
                     drawCell = args =>
                     {
                         GUI.Label(args.rect,args.item.id.ToString());
+                    },
+                    selector = i =>
+                    {
+                        return i.id;
                     }
                 }
             };

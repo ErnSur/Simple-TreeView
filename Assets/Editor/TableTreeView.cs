@@ -8,38 +8,45 @@ using UnityEngine;
 namespace ES
 {
     public delegate bool ShouldDrawRow<T>(T item, string searchString);
+
     public delegate void DrawCell<T>(DrawCellArgs<T> args);
 
     public class TableTreeView<T> : TreeView
     {
-        private static readonly string[] DeleteCommands = new[] { "Delete", "SoftDelete" };
+        private static readonly string[] DeleteCommands = new[] {"Delete", "SoftDelete"};
 
         public IList<T> list;
         public TreeViewEvents<T> events = new TreeViewEvents<T>();
         public Table<T>.Column[] columns;
-        public TableTreeView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state, multiColumnHeader)
+
+        public TableTreeView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state,
+            multiColumnHeader)
         {
             this.list = list;
             columns = multiColumnHeader.state.columns.Cast<Table<T>.Column>().ToArray();
-            multiColumnHeader.sortingChanged += () => SortIfNeeded();
+            multiColumnHeader.sortingChanged +=
+                c => SortIfNeeded(rootItem, GetRows());
             Reload();
         }
 
-        protected override TreeViewItem BuildRoot() => new TreeViewItem { id = 0, depth = -1 };
+        protected override TreeViewItem BuildRoot() => new TreeViewItem {id = 0, depth = -1};
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
             var rows = list
                 .Where(i => events.ShouldDrawRow(i, searchString))
-                .Select((i, index) => new TableViewItem<T>(i, index) as TreeViewItem)
+                .Select((i, index) => new Row(i, index) as TreeViewItem)
                 .ToList();
+
             SetupParentsAndChildrenFromDepths(root, rows);
+            SortIfNeeded(root, rows);
+            Debug.Log($"Build Rows");
             return rows;
         }
 
         protected override void RowGUI(RowGUIArgs args)
         {
-            var item = args.item as TableViewItem<T>;
+            var item = args.item as Row;
             for (var i = 0; i < args.GetNumVisibleColumns(); ++i)
             {
                 var drawCellArgs = new DrawCellArgs<T>
@@ -53,55 +60,61 @@ namespace ES
             }
         }
 
-        void SortIfNeeded()
+        void SortIfNeeded(TreeViewItem root, IList<TreeViewItem> rows)
         {
-            var rows = GetRows();
-            if (rows.Count <= 1 || multiColumnHeader.sortedColumnIndex == -1)
+            Debug.Log($"Sort");
+            if (rows.Count <= 1 || multiColumnHeader.sortedColumnIndex == -1 ||
+                multiColumnHeader.state.sortedColumns.Length == 0)
                 return;
 
-            // Sort the roots of the existing tree items
-            SortByMultipleColumns();
+            var sortedColumns = multiColumnHeader.state.sortedColumns;
+
+            var items = rows.Cast<Row>(); //root.children.Cast<TableViewItem>();
+
+            var orderedQuery = DoSort(sortedColumns, items);
+            var orderedList = orderedQuery.Cast<TreeViewItem>().ToList();
+            rows.Clear();
+            foreach (Row i in orderedList)
+            {
+                rows.Add(i);
+            }
+
+            root.children = orderedList;
             Repaint();
         }
 
-        void SortByMultipleColumns()
+        private IOrderedEnumerable<Row> DoSort(int[] sortedColumns, IEnumerable<Row> items)
         {
-            var sortedColumns = multiColumnHeader.state.sortedColumns;
-
-            if (sortedColumns.Length == 0)
-                return;
-
-            var items = rootItem.children.Cast<TableViewItem<T>>().Select(t=>t.data);
-            bool ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
-            var orderedQuery = items.Order(columns[sortedColumns[0]].selector, ascending);
+            var ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
+            var selector = columns[sortedColumns[0]].selector;
+            var orderedQuery = items.Order(i => selector?.Invoke(i.data), ascending);
             for (int i = 1; i < sortedColumns.Length; i++)
             {
                 if (columns[sortedColumns[i]]?.selector == null)
                     continue;
                 ascending = multiColumnHeader.IsSortedAscending(sortedColumns[i]);
-                orderedQuery = orderedQuery.ThenBy(columns[sortedColumns[i]].selector, ascending);
+                selector = columns[sortedColumns[i]].selector;
+                orderedQuery = orderedQuery.ThenBy(item => selector(item.data), ascending);
             }
 
-            rootItem.children = orderedQuery.Cast<TreeViewItem>().ToList();
+            return orderedQuery;
         }
 
-       
-
-        private IEnumerable<T> GetSelectedItems() => GetSelection().Cast<TableViewItem<T>>().Select(i => i.data);
+        private IEnumerable<T> GetSelectedItems() => GetSelection().Cast<Row>().Select(i => i.data);
 
         private T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
 
-        protected override bool CanMultiSelect(TreeViewItem item) => events.CanMultiSelect?.Invoke((item as TableViewItem<T>).data) ?? false;
+        protected override bool CanMultiSelect(TreeViewItem item) =>
+            events.CanMultiSelect?.Invoke((item as Row).data) ?? false;
 
         protected override void CommandEventHandling()
         {
-            Event current = Event.current;
+            var current = Event.current;
             if (current.type != EventType.ExecuteCommand && current.type != EventType.ValidateCommand)
             {
                 return;
             }
 
-            Debug.Log($"Command: {current.commandName}");
             TryExecuteCommand(current, () => events.OnDelete?.Invoke(GetSelectedItems()), DeleteCommands);
             TryExecuteCommand(current, () => events.OnDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
             TryExecuteCommand(current, () => events.OnCopy?.Invoke(GetSelectedItems()), "Copy");
@@ -130,16 +143,16 @@ namespace ES
 
         protected override void SelectionChanged(IList<int> selectedIds)
         {
-            events.SelectionChanged?.Invoke(selectedIds.Cast<TableViewItem<T>>().Select(i => i.data).ToList());
+            events.SelectionChanged?.Invoke(selectedIds.Cast<Row>().Select(i => i.data).ToList());
         }
 
-        protected override void SingleClickedItem(int id) => 
+        protected override void SingleClickedItem(int id) =>
             events.SingleClickedItem?.Invoke(GetSelectedItem());
 
         protected override void DoubleClickedItem(int id) =>
             events.DoubleClickedItem?.Invoke(GetSelectedItem());
 
-        protected override bool CanStartDrag(CanStartDragArgs args) => 
+        protected override bool CanStartDrag(CanStartDragArgs args) =>
             events.SetupDragAndDrop != null;
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args) =>
@@ -164,11 +177,22 @@ namespace ES
 
         // TODO: Add Later
         //protected override void SearchChanged(string newSearch) 
+
+        public class Row : TreeViewItem
+        {
+            public T data;
+
+            public Row(T data, int id) : base(id, 0)
+            {
+                this.data = data;
+            }
+        }
     }
 
     static class MyExtensionMethods
     {
-        public static IOrderedEnumerable<T> Order<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector, bool ascending)
+        public static IOrderedEnumerable<T> Order<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector,
+            bool ascending)
         {
             if (ascending)
             {
@@ -180,7 +204,8 @@ namespace ES
             }
         }
 
-        public static IOrderedEnumerable<T> ThenBy<T, TKey>(this IOrderedEnumerable<T> source, Func<T, TKey> selector, bool ascending)
+        public static IOrderedEnumerable<T> ThenBy<T, TKey>(this IOrderedEnumerable<T> source, Func<T, TKey> selector,
+            bool ascending)
         {
             if (ascending)
             {
