@@ -14,17 +14,18 @@ namespace ES
         public MultiColumnHeaderState.Column[] columns;
 
         #region TheAPI
+
         public string SearchString
         {
             get => view.searchString;
             set => view.searchString = value;
         }
+
         public TreeViewEvents<T> Events => view.events;
 
         #endregion
+
         private TableTreeView<T> view;
-
-
 
         public Table(Column[] columns, TableState tableState, IList<T> list)
         {
@@ -35,7 +36,7 @@ namespace ES
 
         private MultiColumnHeader CreateColumnHeader(Column[] columns, TableState tableState)
         {
-            tableState.InitColumnState(columns,out var hadSerializedData);
+            tableState.InitColumnState(columns, out var hadSerializedData);
             var header = new MultiColumnHeader(tableState.columnState);
             if (!hadSerializedData)
                 header.ResizeToFit();
@@ -43,9 +44,10 @@ namespace ES
         }
 
         public void OnGUI(Rect rect) => view.OnGUI(rect);
+
         public void OnGUI()
         {
-            Rect rect = GUILayoutUtility.GetRect(0, 1000, 0, 1000);
+            var rect = GUILayoutUtility.GetRect(0, 1000, 0, 1000);
             view.OnGUI(rect);
         }
 
@@ -56,5 +58,4 @@ namespace ES
             public Func<T, object> selector;
         }
     }
-
 }

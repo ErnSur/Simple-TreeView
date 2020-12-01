@@ -37,5 +37,6 @@ namespace ES
         }*/
     }
     public delegate DragAndDropVisualMode HandleDragAndDrop(bool performDrop, int index);
-
+    public delegate bool ShouldDrawRow<T>(T item, string searchString);
+    public delegate void DrawCell<T>(DrawCellArgs<T> args);
 }
