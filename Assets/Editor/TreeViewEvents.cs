@@ -7,21 +7,21 @@ namespace ES
 {
     public class TreeViewEvents<T>
     {
-        public ShouldDrawRow<T> ShouldDrawRow = (_, __) => true;
-        public Predicate<T> CanMultiSelect;
-        public Predicate<T> CanStartDrag;
-        public Action<IEnumerable<T>> OnDelete; //selection
-        public Action<IEnumerable<T>> OnDuplicate; //selection
-        public Action<IEnumerable<T>> OnCopy; //selection
-        public Action<IEnumerable<T>> OnCut; //selection
-        public Action<IEnumerable<T>> OnPaste; //selection
-        public Action ContextClicked;
-        public Action<T> ContextClickedItem;
-        public Action<T> DoubleClickedItem;
-        public Action<IEnumerable<T>> SetupDragAndDrop;
-        public HandleDragAndDrop HandleDragAndDrop;
-        public Action<IList<T>> SelectionChanged;
-        public Action<T> SingleClickedItem;
+        public ShouldDrawRow<T> shouldDrawRow = (_, __) => true;
+        public Predicate<T> canMultiSelect;
+        public Predicate<T> canStartDrag;
+        public Action<IEnumerable<T>> onDelete; //selection
+        public Action<IEnumerable<T>> onDuplicate; //selection
+        public Action<IEnumerable<T>> onCopy; //selection
+        public Action<IEnumerable<T>> onCut; //selection
+        public Action<IEnumerable<T>> onPaste; //selection
+        public Action contextClicked;
+        public Action<T> contextClickedItem;
+        public Action<T> doubleClickedItem;
+        public Action<IEnumerable<T>> setupDragAndDrop;
+        public HandleDragAndDrop handleDragAndDrop;
+        public Action<IList<T>> selectionChanged;
+        public Action<T> singleClickedItem;
 
 
         //Sample SetupDragAndDrop implementation

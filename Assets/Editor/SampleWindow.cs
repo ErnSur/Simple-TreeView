@@ -23,7 +23,7 @@ namespace ES
         {
             searchField = new SearchField();
             table = new FooTable(CreateTableColumns(), state, list);
-            table.Events.ShouldDrawRow = (i,search) =>
+            table.Events.shouldDrawRow = (i,search) =>
             {
                 return i.name.Contains(search) || i.id.ToString().Contains(search);
             };
@@ -47,10 +47,7 @@ namespace ES
                     {
                         GUI.Label(args.rect,args.item.name.ToString());
                     },
-                    selector = i =>
-                    {
-                        return i.name;
-                    }
+                    getSortingValue = i => i.name
                 },
                 new FooTable.Column
                 {
@@ -59,10 +56,7 @@ namespace ES
                     {
                         GUI.Label(args.rect,args.item.id.ToString());
                     },
-                    selector = i =>
-                    {
-                        return i.id;
-                    }
+                    getSortingValue = i => i.id
                 }
             };
         }

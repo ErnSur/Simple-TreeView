@@ -12,9 +12,6 @@ namespace ES
         public TableState tableState;
 
         public MultiColumnHeaderState.Column[] columns;
-
-        #region TheAPI
-
         public string SearchString
         {
             get => view.searchString;
@@ -23,18 +20,22 @@ namespace ES
 
         public TreeViewEvents<T> Events => view.events;
 
-        #endregion
-
-        private TableTreeView<T> view;
+        private TableView<T> view;
 
         public Table(Column[] columns, TableState tableState, IList<T> list)
         {
             this.tableState = tableState;
             var header = CreateColumnHeader(columns, tableState);
-            view = new TableTreeView<T>(list, tableState.treeViewState, header);
+            view = new TableView<T>(list, tableState.treeViewState, header);
+            for (var i = 0; i < columns.Length; i++)
+            {
+                var column = columns[i];
+                view.columnDrawCell[i] = column.drawCell;
+                view.columnGetSortingValue[i] = column.getSortingValue;
+            }
         }
 
-        private MultiColumnHeader CreateColumnHeader(Column[] columns, TableState tableState)
+        private static MultiColumnHeader CreateColumnHeader(Column[] columns, TableState tableState)
         {
             tableState.InitColumnState(columns, out var hadSerializedData);
             var header = new MultiColumnHeader(tableState.columnState);
@@ -54,8 +55,13 @@ namespace ES
         [System.Serializable]
         public class Column : MultiColumnHeaderState.Column
         {
+            public Column()
+            {
+                headerTextAlignment = TextAlignment.Center;
+                sortingArrowAlignment = TextAlignment.Right;
+            }
             public DrawCell<T> drawCell;
-            public Func<T, object> selector;
+            public Func<T, object> getSortingValue;
         }
     }
 }

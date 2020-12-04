@@ -7,22 +7,22 @@ using UnityEngine;
 
 namespace ES
 {
-    public class TableTreeView<T> : TreeView
+    public class TableView<T> : TreeView
     {
         private static readonly string[] DeleteCommands = new[] {"Delete", "SoftDelete"};
 
         public IList<T> list;
         public TreeViewEvents<T> events = new TreeViewEvents<T>();
-        public Table<T>.Column[] columns;
+        public Dictionary<int, DrawCell<T>> columnDrawCell = new Dictionary<int, DrawCell<T>>();
+        public Dictionary<int, Func<T, object>> columnGetSortingValue = new Dictionary<int, Func<T, object>>();
 
         public T GetItemData(int treeViewItemId) => list[treeViewItemId];
         public T GetItemData(TreeViewItem item) => GetItemData(item.id);
 
-        public TableTreeView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state,
+        public TableView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state,
             multiColumnHeader)
         {
             this.list = list;
-            columns = multiColumnHeader.state.columns.Cast<Table<T>.Column>().ToArray();
             multiColumnHeader.sortingChanged +=
                 c => SortIfNeeded(rootItem, GetRows());
             Reload();
@@ -33,7 +33,7 @@ namespace ES
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
             var rows = list
-                .Where(i => events.ShouldDrawRow(i, searchString))
+                .Where(obj => events.shouldDrawRow(obj, searchString))
                 .Select((_, index) => new TreeViewItem(index, 0))
                 .ToList();
 
@@ -45,17 +45,18 @@ namespace ES
 
         protected override void RowGUI(RowGUIArgs args)
         {
-            var item = args.item;
             for (var i = 0; i < args.GetNumVisibleColumns(); ++i)
             {
+                if (!columnDrawCell.TryGetValue(args.GetColumn(i), out var draw))
+                    continue;
                 var drawCellArgs = new DrawCellArgs<T>
                 {
-                    item = GetItemData(item.id),
+                    item = GetItemData(args.item.id),
                     rect = args.GetCellRect(i),
                     selected = args.selected,
                     focused = args.focused
                 };
-                columns[args.GetColumn(i)].drawCell(drawCellArgs);
+                draw(drawCellArgs);
             }
         }
 
@@ -81,14 +82,13 @@ namespace ES
         private IOrderedEnumerable<TreeViewItem> DoSort(int[] sortedColumns, IEnumerable<TreeViewItem> items)
         {
             var ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
-            var selector = columns[sortedColumns[0]].selector;
+            columnGetSortingValue.TryGetValue(sortedColumns[0], out var selector);
             var orderedQuery = items.Order(i => selector?.Invoke(GetItemData(i)), ascending);
             for (int i = 1; i < sortedColumns.Length; i++)
             {
-                if (columns[sortedColumns[i]]?.selector == null)
+                if (!columnGetSortingValue.TryGetValue(sortedColumns[i], out selector))
                     continue;
                 ascending = multiColumnHeader.IsSortedAscending(sortedColumns[i]);
-                selector = columns[sortedColumns[i]].selector;
                 orderedQuery = orderedQuery.ThenBy(item => selector(GetItemData(item)), ascending);
             }
 
@@ -100,7 +100,7 @@ namespace ES
         private T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
 
         protected override bool CanMultiSelect(TreeViewItem item) =>
-            events.CanMultiSelect?.Invoke(GetItemData(item)) ?? false;
+            events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
 
         protected override void CommandEventHandling()
         {
@@ -110,11 +110,11 @@ namespace ES
                 return;
             }
 
-            TryExecuteCommand(current, () => events.OnDelete?.Invoke(GetSelectedItems()), DeleteCommands);
-            TryExecuteCommand(current, () => events.OnDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
-            TryExecuteCommand(current, () => events.OnCopy?.Invoke(GetSelectedItems()), "Copy");
-            TryExecuteCommand(current, () => events.OnCut?.Invoke(GetSelectedItems()), "Cut");
-            TryExecuteCommand(current, () => events.OnPaste?.Invoke(GetSelectedItems()), "Pase");
+            TryExecuteCommand(current, () => events.onDelete?.Invoke(GetSelectedItems()), DeleteCommands);
+            TryExecuteCommand(current, () => events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
+            TryExecuteCommand(current, () => events.onCopy?.Invoke(GetSelectedItems()), "Copy");
+            TryExecuteCommand(current, () => events.onCut?.Invoke(GetSelectedItems()), "Cut");
+            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Pase");
             base.CommandEventHandling();
         }
 
@@ -132,30 +132,30 @@ namespace ES
             }
         }
 
-        protected override void ContextClicked() => events.ContextClicked?.Invoke();
+        protected override void ContextClicked() => events.contextClicked?.Invoke();
 
-        protected override void ContextClickedItem(int id) => events.ContextClickedItem?.Invoke(GetSelectedItem());
+        protected override void ContextClickedItem(int id) => events.contextClickedItem?.Invoke(GetSelectedItem());
 
         protected override void SelectionChanged(IList<int> selectedIds)
         {
-            events.SelectionChanged?.Invoke(selectedIds.Select(GetItemData).ToList());
+            events.selectionChanged?.Invoke(selectedIds.Select(GetItemData).ToList());
         }
 
         protected override void SingleClickedItem(int id) =>
-            events.SingleClickedItem?.Invoke(GetSelectedItem());
+            events.singleClickedItem?.Invoke(GetSelectedItem());
 
         protected override void DoubleClickedItem(int id) =>
-            events.DoubleClickedItem?.Invoke(GetSelectedItem());
+            events.doubleClickedItem?.Invoke(GetSelectedItem());
 
         protected override bool CanStartDrag(CanStartDragArgs args) =>
-            events.SetupDragAndDrop != null;
+            events.setupDragAndDrop != null;
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args) =>
-            events.SetupDragAndDrop(GetSelectedItems());
+            events.setupDragAndDrop(GetSelectedItems());
 
         protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
         {
-            return events.HandleDragAndDrop?.Invoke(args.performDrop, args.insertAtIndex) ?? DragAndDropVisualMode.None;
+            return events.handleDragAndDrop?.Invoke(args.performDrop, args.insertAtIndex) ?? DragAndDropVisualMode.None;
         }
 
         // TODO: Check in cs source if this is used somewhere
