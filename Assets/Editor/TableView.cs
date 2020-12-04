@@ -151,7 +151,7 @@ namespace ES
             events.setupDragAndDrop != null;
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args) =>
-            events.setupDragAndDrop(GetSelectedItems());
+            events.setupDragAndDrop(args.draggedItemIDs.Select(GetItemData));
 
         protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
         {
