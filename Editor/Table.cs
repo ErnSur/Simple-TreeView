@@ -19,8 +19,8 @@ namespace ES
         }
 
         public TreeViewEvents<T> Events => view.events;
-
-        private TableView<T> view;
+        
+        public TableView<T> view;
 
         public Table(Column[] columns, TableState tableState, IList<T> list)
         {
@@ -43,6 +43,8 @@ namespace ES
                 header.ResizeToFit();
             return header;
         }
+
+        public void Reload() => view.Reload();
 
         public void OnGUI(Rect rect) => view.OnGUI(rect);
 

@@ -9,7 +9,6 @@ namespace ES
     {
         public ShouldDrawRow<T> shouldDrawRow = (_, __) => true;
         public Predicate<T> canMultiSelect;
-        public Predicate<T> canStartDrag;
         public Action<IEnumerable<T>> onDelete; //selection
         public Action<IEnumerable<T>> onDuplicate; //selection
         public Action<IEnumerable<T>> onCopy; //selection
@@ -23,6 +22,7 @@ namespace ES
         public Action<IList<T>> selectionChanged;
         public Action<T> singleClickedItem;
 
+        public Action<IList<T>> reloadList;
 
         //Sample SetupDragAndDrop implementation
         /*protected override void SetupDragAndDrop(IEnumerable<T> selection)

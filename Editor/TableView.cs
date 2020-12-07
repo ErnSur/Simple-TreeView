@@ -26,12 +26,14 @@ namespace ES
             multiColumnHeader.sortingChanged +=
                 c => SortIfNeeded(rootItem, GetRows());
             Reload();
+            showAlternatingRowBackgrounds = true;
         }
 
         protected override TreeViewItem BuildRoot() => new TreeViewItem {id = -1, depth = -1, displayName = "root"};
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
+            events.reloadList?.Invoke(list);
             var rows = list
                 .Where(obj => events.shouldDrawRow(obj, searchString))
                 .Select((_, index) => new TreeViewItem(index, 0))
@@ -95,9 +97,9 @@ namespace ES
             return orderedQuery;
         }
 
-        private IEnumerable<T> GetSelectedItems() => GetSelection().Select(GetItemData);
+        public IEnumerable<T> GetSelectedItems() => GetSelection().Select(GetItemData);
 
-        private T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
+        public T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
 
         protected override bool CanMultiSelect(TreeViewItem item) =>
             events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
@@ -110,11 +112,12 @@ namespace ES
                 return;
             }
 
+            // TODO: see cmd+N command name
             TryExecuteCommand(current, () => events.onDelete?.Invoke(GetSelectedItems()), DeleteCommands);
             TryExecuteCommand(current, () => events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
             TryExecuteCommand(current, () => events.onCopy?.Invoke(GetSelectedItems()), "Copy");
             TryExecuteCommand(current, () => events.onCut?.Invoke(GetSelectedItems()), "Cut");
-            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Pase");
+            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Paste");
             base.CommandEventHandling();
         }
 
