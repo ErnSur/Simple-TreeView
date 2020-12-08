@@ -6,19 +6,20 @@ namespace QuickEye.UI.Editor
 {
     public class SampleWindow : EditorWindow
     {
+        [MenuItem("Window/FOOOO")]
+        public static void O() => GetWindow<SampleWindow>(typeof(SceneView));
+        
         [SerializeField]
         private TableState state = new TableState();
-        private SearchField searchField;
         private FooTable table;
         public Foo[] list = new[]
         {
             new Foo{name = "Eric", id=0},
             new Foo{name = "Andrew", id=1},
         };
-
-        [MenuItem("Window/FOOOO")]
-        public static void O() => GetWindow<SampleWindow>(typeof(SceneView));
-
+        
+        private SearchField searchField;
+        
         private void OnEnable()
         {
             searchField = new SearchField();
@@ -27,12 +28,11 @@ namespace QuickEye.UI.Editor
             {
                 return i.name.Contains(search) || i.id.ToString().Contains(search);
             };
-
         }
 
         private void OnGUI()
         {
-            table.SearchString = searchField.OnGUI(table.SearchString);
+            table.searchString = searchField.OnGUI(table.searchString);
             table.OnGUI();
         }
 

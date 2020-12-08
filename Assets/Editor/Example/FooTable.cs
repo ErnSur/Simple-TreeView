@@ -3,7 +3,7 @@
 namespace QuickEye.UI.Editor
 {
     [System.Serializable]
-    public class FooTable : Table<Foo>
+    public class FooTable : TableView<Foo>
     {
         public FooTable(Column[] columns,TableState state, IList<Foo> list) : base(columns, state,list)
         {
