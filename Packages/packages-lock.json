@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.quickeye.simple-treeview": {
+      "version": "file:com.quickeye.simple-treeview",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.2d.animation": {
       "version": "4.2.6",
       "depth": 0,
