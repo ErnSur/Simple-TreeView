@@ -141,16 +141,16 @@ namespace QuickEye.UI.Editor
 
         protected override void CommandEventHandling()
         {
-            base.CommandEventHandling();
             var current = Event.current;
-            if (current.type != EventType.ExecuteCommand)
+            if (current.type != EventType.ExecuteCommand && current.type != EventType.ValidateCommand)
                 return;
-
+            
             TryExecuteCommand(current, () => Events.onDelete?.Invoke(GetSelectedItems()), new[]{"Delete", "SoftDelete"});
             TryExecuteCommand(current, () => Events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
             TryExecuteCommand(current, () => Events.onCopy?.Invoke(GetSelectedItems()), "Copy");
             TryExecuteCommand(current, () => Events.onCut?.Invoke(GetSelectedItems()), "Cut");
             TryExecuteCommand(current, () => Events.onPaste?.Invoke(GetSelectedItems()), "Paste");
+            base.CommandEventHandling();
         }
 
         private void TryExecuteCommand(Event current, Action action, params string[] commandNames)
