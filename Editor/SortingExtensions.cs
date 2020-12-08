@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     internal static class SortingExtensions
     {

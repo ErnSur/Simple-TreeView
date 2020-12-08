@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     [System.Serializable]
     public class TableState

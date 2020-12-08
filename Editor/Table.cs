@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     public class Table<T>
     {

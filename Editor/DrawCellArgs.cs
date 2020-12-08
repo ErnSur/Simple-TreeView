@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     public struct DrawCellArgs<T>
     {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     public class TreeViewEvents<T>
     {
