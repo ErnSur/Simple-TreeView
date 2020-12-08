@@ -56,15 +56,23 @@ namespace QuickEye.UI.Editor
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
             Events.reloadList?.Invoke(list);
-            var rows = list
-                .Where(obj => Events.shouldDrawRow(obj, searchString))
-                .Select((_, index) => new TreeViewItem(index, 0))
-                .ToList();
-
+            
+            var rows = CreateRows().ToList();
+            
             SetupParentsAndChildrenFromDepths(root, rows);
             SortIfNeeded(root, rows);
             Debug.Log("Build Rows");
             return rows;
+
+            IEnumerable<TreeViewItem> CreateRows()
+            {
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var item = list[i];
+                    if (Events.shouldDrawRow(item, searchString))
+                        yield return new TreeViewItem(i, 0);
+                }
+            }
         }
 
         protected override void RowGUI(RowGUIArgs args)
