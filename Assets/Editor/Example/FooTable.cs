@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ES
+namespace QuickEye.UI.Editor
 {
     [System.Serializable]
     public class FooTable : Table<Foo>
