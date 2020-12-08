@@ -113,13 +113,6 @@ namespace QuickEye.UI.Editor
             var ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
             columnGetSortingValue.TryGetValue(sortedColumns[0], out var selector);
             var orderedQuery = items.Order(i => selector?.Invoke(GetItemData(i)), ascending);
-            for (var i = 1; i < sortedColumns.Length; i++)
-            {
-                if (!columnGetSortingValue.TryGetValue(sortedColumns[i], out selector))
-                    continue;
-                ascending = multiColumnHeader.IsSortedAscending(sortedColumns[i]);
-                orderedQuery = orderedQuery.ThenBy(item => selector(GetItemData(item)), ascending);
-            }
 
             return orderedQuery;
         }
