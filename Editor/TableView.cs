@@ -9,20 +9,33 @@ namespace QuickEye.UI.Editor
 {
     public class TableView<T> : TreeView
     {
-        private static readonly string[] DeleteCommands = {"Delete", "SoftDelete"};
         public Dictionary<int, DrawCell<T>> columnDrawCell = new Dictionary<int, DrawCell<T>>();
         public Dictionary<int, Func<T, object>> columnGetSortingValue = new Dictionary<int, Func<T, object>>();
-        public TreeViewEvents<T> events = new TreeViewEvents<T>();
+        public TreeViewEvents<T> Events { get; } = new TreeViewEvents<T>();
 
         public IList<T> list;
-
-        public TableView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state,
-            multiColumnHeader)
+        
+        public TableView(Column[] columns, TableState tableState, IList<T> list): base(tableState.treeViewState)
         {
             this.list = list;
+            for (var i = 0; i < columns.Length; i++)
+            {
+                var column = columns[i];
+                columnDrawCell[i] = column.drawCell;
+                columnGetSortingValue[i] = column.getSortingValue;
+            }
+
+            tableState.Init(columns,out var header);
+            multiColumnHeader = header;
             multiColumnHeader.sortingChanged +=
                 c => SortIfNeeded(rootItem, GetRows());
             Reload();
+        }
+        
+        public void OnGUI()
+        {
+            var rect = GUILayoutUtility.GetRect(0, 1000, 0, 1000);
+            OnGUI(rect);
         }
 
         public T GetItemData(int treeViewItemId)
@@ -42,9 +55,9 @@ namespace QuickEye.UI.Editor
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
-            events.reloadList?.Invoke(list);
+            Events.reloadList?.Invoke(list);
             var rows = list
-                .Where(obj => events.shouldDrawRow(obj, searchString))
+                .Where(obj => Events.shouldDrawRow(obj, searchString))
                 .Select((_, index) => new TreeViewItem(index, 0))
                 .ToList();
 
@@ -115,7 +128,7 @@ namespace QuickEye.UI.Editor
 
         protected override bool CanMultiSelect(TreeViewItem item)
         {
-            return events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
+            return Events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
         }
 
         protected override void CommandEventHandling()
@@ -125,11 +138,11 @@ namespace QuickEye.UI.Editor
             if (current.type != EventType.ExecuteCommand)
                 return;
 
-            TryExecuteCommand(current, () => events.onDelete?.Invoke(GetSelectedItems()), DeleteCommands);
-            TryExecuteCommand(current, () => events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
-            TryExecuteCommand(current, () => events.onCopy?.Invoke(GetSelectedItems()), "Copy");
-            TryExecuteCommand(current, () => events.onCut?.Invoke(GetSelectedItems()), "Cut");
-            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Paste");
+            TryExecuteCommand(current, () => Events.onDelete?.Invoke(GetSelectedItems()), new[]{"Delete", "SoftDelete"});
+            TryExecuteCommand(current, () => Events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
+            TryExecuteCommand(current, () => Events.onCopy?.Invoke(GetSelectedItems()), "Copy");
+            TryExecuteCommand(current, () => Events.onCut?.Invoke(GetSelectedItems()), "Cut");
+            TryExecuteCommand(current, () => Events.onPaste?.Invoke(GetSelectedItems()), "Paste");
         }
 
         private void TryExecuteCommand(Event current, Action action, params string[] commandNames)
@@ -146,42 +159,42 @@ namespace QuickEye.UI.Editor
 
         protected override void ContextClicked()
         {
-            events.contextClicked?.Invoke();
+            Events.contextClicked?.Invoke();
         }
 
         protected override void ContextClickedItem(int id)
         {
-            events.contextClickedItem?.Invoke(GetSelectedItem());
+            Events.contextClickedItem?.Invoke(GetSelectedItem());
         }
 
         protected override void SelectionChanged(IList<int> selectedIds)
         {
-            events.selectionChanged?.Invoke(selectedIds.Select(GetItemData).ToList());
+            Events.selectionChanged?.Invoke(selectedIds.Select(GetItemData).ToList());
         }
 
         protected override void SingleClickedItem(int id)
         {
-            events.singleClickedItem?.Invoke(GetSelectedItem());
+            Events.singleClickedItem?.Invoke(GetSelectedItem());
         }
 
         protected override void DoubleClickedItem(int id)
         {
-            events.doubleClickedItem?.Invoke(GetSelectedItem());
+            Events.doubleClickedItem?.Invoke(GetSelectedItem());
         }
 
         protected override bool CanStartDrag(CanStartDragArgs args)
         {
-            return events.setupDragAndDrop != null;
+            return Events.setupDragAndDrop != null;
         }
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
         {
-            events.setupDragAndDrop(args.draggedItemIDs.Select(GetItemData));
+            Events.setupDragAndDrop(args.draggedItemIDs.Select(GetItemData));
         }
 
         protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
         {
-            return events.handleDragAndDrop?.Invoke(args.performDrop, args.insertAtIndex) ?? DragAndDropVisualMode.None;
+            return Events.handleDragAndDrop?.Invoke(args.performDrop, args.insertAtIndex) ?? DragAndDropVisualMode.None;
         }
 
         // TODO: Check in cs source if this is used somewhere
@@ -198,5 +211,17 @@ namespace QuickEye.UI.Editor
 
         // TODO: Add Later
         //protected override void SearchChanged(string newSearch)
+        
+        [System.Serializable]
+        public class Column : MultiColumnHeaderState.Column
+        {
+            public Column()
+            {
+                headerTextAlignment = TextAlignment.Center;
+                sortingArrowAlignment = TextAlignment.Right;
+            }
+            public DrawCell<T> drawCell;
+            public Func<T, object> getSortingValue;
+        }
     }
 }
