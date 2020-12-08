@@ -9,15 +9,12 @@ namespace QuickEye.UI.Editor
 {
     public class TableView<T> : TreeView
     {
-        private static readonly string[] DeleteCommands = new[] {"Delete", "SoftDelete"};
-
-        public IList<T> list;
-        public TreeViewEvents<T> events = new TreeViewEvents<T>();
+        private static readonly string[] DeleteCommands = {"Delete", "SoftDelete"};
         public Dictionary<int, DrawCell<T>> columnDrawCell = new Dictionary<int, DrawCell<T>>();
         public Dictionary<int, Func<T, object>> columnGetSortingValue = new Dictionary<int, Func<T, object>>();
+        public TreeViewEvents<T> events = new TreeViewEvents<T>();
 
-        public T GetItemData(int treeViewItemId) => list[treeViewItemId];
-        public T GetItemData(TreeViewItem item) => GetItemData(item.id);
+        public IList<T> list;
 
         public TableView(IList<T> list, TreeViewState state, MultiColumnHeader multiColumnHeader) : base(state,
             multiColumnHeader)
@@ -28,10 +25,24 @@ namespace QuickEye.UI.Editor
             Reload();
         }
 
-        protected override TreeViewItem BuildRoot() => new TreeViewItem {id = -1, depth = -1, displayName = "root"};
+        public T GetItemData(int treeViewItemId)
+        {
+            return list[treeViewItemId];
+        }
+
+        public T GetItemData(TreeViewItem item)
+        {
+            return GetItemData(item.id);
+        }
+
+        protected override TreeViewItem BuildRoot()
+        {
+            return new TreeViewItem {id = -1, depth = -1, displayName = "root"};
+        }
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
+            events.reloadList?.Invoke(list);
             var rows = list
                 .Where(obj => events.shouldDrawRow(obj, searchString))
                 .Select((_, index) => new TreeViewItem(index, 0))
@@ -39,7 +50,7 @@ namespace QuickEye.UI.Editor
 
             SetupParentsAndChildrenFromDepths(root, rows);
             SortIfNeeded(root, rows);
-            Debug.Log($"Build Rows");
+            Debug.Log("Build Rows");
             return rows;
         }
 
@@ -70,10 +81,7 @@ namespace QuickEye.UI.Editor
 
             var orderedRows = DoSort(sortedColumns, rows).ToList();
             rows.Clear();
-            foreach (var i in orderedRows)
-            {
-                rows.Add(i);
-            }
+            foreach (var i in orderedRows) rows.Add(i);
 
             root.children = orderedRows;
             Repaint();
@@ -84,7 +92,7 @@ namespace QuickEye.UI.Editor
             var ascending = multiColumnHeader.IsSortedAscending(sortedColumns[0]);
             columnGetSortingValue.TryGetValue(sortedColumns[0], out var selector);
             var orderedQuery = items.Order(i => selector?.Invoke(GetItemData(i)), ascending);
-            for (int i = 1; i < sortedColumns.Length; i++)
+            for (var i = 1; i < sortedColumns.Length; i++)
             {
                 if (!columnGetSortingValue.TryGetValue(sortedColumns[i], out selector))
                     continue;
@@ -95,27 +103,33 @@ namespace QuickEye.UI.Editor
             return orderedQuery;
         }
 
-        private IEnumerable<T> GetSelectedItems() => GetSelection().Select(GetItemData);
+        public IEnumerable<T> GetSelectedItems()
+        {
+            return GetSelection().Select(GetItemData);
+        }
 
-        private T GetSelectedItem() => GetSelectedItems().FirstOrDefault();
+        private T GetSelectedItem()
+        {
+            return GetSelectedItems().FirstOrDefault();
+        }
 
-        protected override bool CanMultiSelect(TreeViewItem item) =>
-            events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
+        protected override bool CanMultiSelect(TreeViewItem item)
+        {
+            return events.canMultiSelect?.Invoke(GetItemData(item)) ?? false;
+        }
 
         protected override void CommandEventHandling()
         {
+            base.CommandEventHandling();
             var current = Event.current;
-            if (current.type != EventType.ExecuteCommand && current.type != EventType.ValidateCommand)
-            {
+            if (current.type != EventType.ExecuteCommand)
                 return;
-            }
 
             TryExecuteCommand(current, () => events.onDelete?.Invoke(GetSelectedItems()), DeleteCommands);
             TryExecuteCommand(current, () => events.onDuplicate?.Invoke(GetSelectedItems()), "Duplicate");
             TryExecuteCommand(current, () => events.onCopy?.Invoke(GetSelectedItems()), "Copy");
             TryExecuteCommand(current, () => events.onCut?.Invoke(GetSelectedItems()), "Cut");
-            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Pase");
-            base.CommandEventHandling();
+            TryExecuteCommand(current, () => events.onPaste?.Invoke(GetSelectedItems()), "Paste");
         }
 
         private void TryExecuteCommand(Event current, Action action, params string[] commandNames)
@@ -123,35 +137,47 @@ namespace QuickEye.UI.Editor
             if (HasFocus() && commandNames.Contains(current.commandName))
             {
                 if (current.type == EventType.ExecuteCommand)
-                {
                     action?.Invoke();
-                }
 
                 current.Use();
                 GUIUtility.ExitGUI();
             }
         }
 
-        protected override void ContextClicked() => events.contextClicked?.Invoke();
+        protected override void ContextClicked()
+        {
+            events.contextClicked?.Invoke();
+        }
 
-        protected override void ContextClickedItem(int id) => events.contextClickedItem?.Invoke(GetSelectedItem());
+        protected override void ContextClickedItem(int id)
+        {
+            events.contextClickedItem?.Invoke(GetSelectedItem());
+        }
 
         protected override void SelectionChanged(IList<int> selectedIds)
         {
             events.selectionChanged?.Invoke(selectedIds.Select(GetItemData).ToList());
         }
 
-        protected override void SingleClickedItem(int id) =>
+        protected override void SingleClickedItem(int id)
+        {
             events.singleClickedItem?.Invoke(GetSelectedItem());
+        }
 
-        protected override void DoubleClickedItem(int id) =>
+        protected override void DoubleClickedItem(int id)
+        {
             events.doubleClickedItem?.Invoke(GetSelectedItem());
+        }
 
-        protected override bool CanStartDrag(CanStartDragArgs args) =>
-            events.setupDragAndDrop != null;
+        protected override bool CanStartDrag(CanStartDragArgs args)
+        {
+            return events.setupDragAndDrop != null;
+        }
 
-        protected override void SetupDragAndDrop(SetupDragAndDropArgs args) =>
+        protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
+        {
             events.setupDragAndDrop(args.draggedItemIDs.Select(GetItemData));
+        }
 
         protected override DragAndDropVisualMode HandleDragAndDrop(DragAndDropArgs args)
         {

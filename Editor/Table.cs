@@ -20,8 +20,9 @@ namespace QuickEye.UI.Editor
 
         public TreeViewEvents<T> Events => view.events;
 
-        private TableView<T> view;
-
+        public TableView<T> view;
+        public void Reload() => view.Reload();
+        
         public Table(Column[] columns, TableState tableState, IList<T> list)
         {
             this.tableState = tableState;
