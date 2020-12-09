@@ -61,7 +61,6 @@ namespace QuickEye.UI.Editor
             
             SetupParentsAndChildrenFromDepths(root, rows);
             SortIfNeeded(root, rows);
-            Debug.Log("Build Rows");
             return rows;
 
             IEnumerable<TreeViewItem> CreateRows()
