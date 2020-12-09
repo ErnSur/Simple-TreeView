@@ -9,15 +9,32 @@ namespace QuickEye.UI.Editor
 {
     public class TableView<T> : TreeView
     {
+        public TableState state;
         public Dictionary<int, DrawCell<T>> columnDrawCell = new Dictionary<int, DrawCell<T>>();
         public Dictionary<int, Func<T, object>> columnGetSortingValue = new Dictionary<int, Func<T, object>>();
         public TreeViewEvents<T> Events { get; } = new TreeViewEvents<T>();
 
         public IList<T> list;
-        
-        public TableView(Column[] columns, TableState tableState, IList<T> list): base(tableState.treeViewState)
+
+        public Column[] Columns
         {
+            get => state.columnState.columns.Cast<Column>().ToArray();
+            set => InitColumns(value);
+        }
+
+        public TableView(TableState tableState, IList<T> list) : base(tableState.treeViewState)
+        {
+            state = tableState;
             this.list = list;
+        }
+
+        public TableView(Column[] columns, TableState tableState, IList<T> list) : this(tableState, list)
+        {
+            InitColumns(columns);
+        }
+
+        private void InitColumns(Column[] columns)
+        {
             for (var i = 0; i < columns.Length; i++)
             {
                 var column = columns[i];
@@ -25,13 +42,13 @@ namespace QuickEye.UI.Editor
                 columnGetSortingValue[i] = column.getSortingValue;
             }
 
-            tableState.Init(columns,out var header);
+            state.Init(columns, out var header);
             multiColumnHeader = header;
             multiColumnHeader.sortingChanged +=
                 c => SortIfNeeded(rootItem, GetRows());
             Reload();
         }
-        
+
         public void OnGUI()
         {
             var rect = GUILayoutUtility.GetRect(0, 1000, 0, 1000);
@@ -56,9 +73,9 @@ namespace QuickEye.UI.Editor
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
             Events.reloadList?.Invoke(list);
-            
+
             var rows = CreateRows().ToList();
-            
+
             SetupParentsAndChildrenFromDepths(root, rows);
             SortIfNeeded(root, rows);
             return rows;
@@ -76,13 +93,14 @@ namespace QuickEye.UI.Editor
 
         protected override void RowGUI(RowGUIArgs args)
         {
+            var item = GetItemData(args.item.id);
             for (var i = 0; i < args.GetNumVisibleColumns(); ++i)
             {
                 if (!columnDrawCell.TryGetValue(args.GetColumn(i), out var draw))
                     continue;
                 var drawCellArgs = new DrawCellArgs<T>
                 {
-                    item = GetItemData(args.item.id),
+                    item = item,
                     rect = args.GetCellRect(i),
                     selected = args.selected,
                     focused = args.focused
@@ -211,7 +229,7 @@ namespace QuickEye.UI.Editor
 
         // TODO: Add Later
         //protected override void SearchChanged(string newSearch)
-        
+
         [System.Serializable]
         public class Column : MultiColumnHeaderState.Column
         {
@@ -220,6 +238,7 @@ namespace QuickEye.UI.Editor
                 headerTextAlignment = TextAlignment.Center;
                 sortingArrowAlignment = TextAlignment.Right;
             }
+
             public DrawCell<T> drawCell;
             public Func<T, object> getSortingValue;
         }
